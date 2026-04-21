@@ -13,6 +13,20 @@
 <button onclick="runQuery()">Run Query</button>
 
 <h3>Results</h3>
+<div style="margin-bottom:10px;">
+    <label>Level:</label>
+    <select id="filterLevel" onchange="applyFilters()">
+        <option value="">All</option>
+    </select>
+
+    <label>Service:</label>
+    <select id="filterService" onchange="applyFilters()">
+        <option value="">All</option>
+    </select>
+
+    <label>Search:</label>
+    <input type="text" id="searchBox" oninput="applyFilters()" placeholder="Search...">
+</div>
 <table border="1" id="results"></table>
 
 <script src="/static/app.js"></script>

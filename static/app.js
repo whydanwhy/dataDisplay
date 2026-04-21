@@ -1,4 +1,8 @@
+console.log("app.js loaded");
 let editor;
+let originalData = [];
+let currentColumns = [];
+let sortState = { column: null, asc: true };
 
 require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@latest/min/vs' }});
 
@@ -21,27 +25,115 @@ async function runQuery() {
 
     const data = await response.json();
 
-    const table = document.getElementById("results");
-    table.innerHTML = "";
-
     if (data.error) {
-        table.innerHTML = `<tr><td>${data.error}</td></tr>`;
+        alert(data.error);
         return;
     }
 
+    originalData = data.rows;
+    currentColumns = data.columns;
+
+    populateFilters(originalData);
+    renderTable(originalData);
+}
+
+function populateFilters(data) {
+    const levelSet = new Set();
+    const serviceSet = new Set();
+
+    data.forEach(row => {
+        if (row.level) levelSet.add(row.level);
+        if (row.service) serviceSet.add(row.service);
+    });
+
+    const levelSelect = document.getElementById("filterLevel");
+    const serviceSelect = document.getElementById("filterService");
+
+    levelSelect.innerHTML = '<option value="">All</option>';
+    serviceSelect.innerHTML = '<option value="">All</option>';
+
+    levelSet.forEach(val => {
+        levelSelect.innerHTML += `<option value="${val}">${val}</option>`;
+    });
+
+    serviceSet.forEach(val => {
+        serviceSelect.innerHTML += `<option value="${val}">${val}</option>`;
+    });
+}
+
+function applyFilters() {
+    console.log("appplyFilters Called");
+    let filtered = [...originalData];
+
+    const level = document.getElementById("filterLevel").value;
+    const service = document.getElementById("filterService").value;
+    const search = document.getElementById("searchBox").value.toLowerCase();
+
+    if (level) {
+        filtered = filtered.filter(row => row.level === level);
+    }
+
+    if (service) {
+        filtered = filtered.filter(row => row.service === service);
+    }
+
+    if (search) {
+        filtered = filtered.filter(row =>
+            Object.values(row).some(val =>
+                String(val).toLowerCase().includes(search)
+            )
+        );
+    }
+
+    if (sortState.column) {
+        filtered.sort((a, b) => {
+            let valA = a[sortState.column];
+            let valB = b[sortState.column];
+
+            if (!isNaN(valA) && !isNaN(valB)) {
+                valA = Number(valA);
+                valB = Number(valB);
+            }
+
+            if (valA < valB) return sortState.asc ? -1 : 1;
+            if (valA > valB) return sortState.asc ? 1 : -1;
+            return 0;
+        });
+    }
+
+    renderTable(filtered);
+}
+
+function renderTable(data) {
+    const table = document.getElementById("results");
+    table.innerHTML = "";
+
     // Header
     let header = "<tr>";
-    data.columns.forEach(col => header += `<th>${col}</th>`);
+    currentColumns.forEach(col => {
+        header += `<th onclick="sortBy('${col}')">${col}</th>`;
+    });
     header += "</tr>";
     table.innerHTML += header;
 
     // Rows
-    data.rows.forEach(row => {
+    data.forEach(row => {
         let rowHtml = "<tr>";
-        data.columns.forEach(col => {
+        currentColumns.forEach(col => {
             rowHtml += `<td>${row[col]}</td>`;
         });
         rowHtml += "</tr>";
         table.innerHTML += rowHtml;
     });
+}
+
+function sortBy(column) {
+    if (sortState.column === column) {
+        sortState.asc = !sortState.asc;
+    } else {
+        sortState.column = column;
+        sortState.asc = true;
+    }
+
+    applyFilters();
 }
