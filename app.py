@@ -40,7 +40,7 @@ async def run_query(payload: QueryRequest):
         con.execute(f"""
             CREATE OR REPLACE VIEW logs AS
             SELECT 
-                CAST(timestamp AS VARCHAR) as timestamp,
+                CAST(timestamp AS timestamp) as timestamp,
                 level,
                 service,
                 user_id,
