@@ -15,12 +15,45 @@ require(['vs/editor/editor.main'], function () {
 });
 
 async function runQuery() {
-    const query = editor.getValue();
+    let baseQuery = editor.getValue();
+    let finalQuery = baseQuery;
+
+const timeRange = document.getElementById("timeRange")?.value;
+const startTime = document.getElementById("startTime").value;
+const endTime = document.getElementById("endTime").value;
+
+// PRIORITY: Custom range overrides dropdown
+if (startTime && endTime) {
+    finalQuery = `
+        SELECT * FROM (
+            ${baseQuery.replace(/;$/, '')}
+        ) AS sub
+        WHERE timestamp BETWEEN '${startTime.replace("T", " ")}'
+        AND '${endTime.replace("T", " ")}'
+    `;
+} else if (timeRange && timeRange !== "none") {
+    const intervalMap = {
+        "15m": "INTERVAL '15 minutes'",
+        "1h": "INTERVAL '1 hour'",
+        "24h": "INTERVAL '24 hours'"
+    };
+
+    const interval = intervalMap[timeRange];
+
+    finalQuery = `
+        SELECT * FROM (
+            ${baseQuery.replace(/;$/, '')}
+        ) AS sub
+        WHERE timestamp >= NOW() - ${interval}
+    `;
+}
+
+    console.log("FINAL QUERY:", finalQuery);
 
     const response = await fetch('/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query: finalQuery })
     });
 
     const data = await response.json();
@@ -136,4 +169,9 @@ function sortBy(column) {
     }
 
     applyFilters();
+}
+
+function clearTimeRange() {
+    document.getElementById("startTime").value = "";
+    document.getElementById("endTime").value = "";
 }
