@@ -13,7 +13,13 @@ require(['vs/editor/editor.main'], function () {
         theme: "vs-dark"
     });
 });
+let echartsInstance = null;
 
+require.config({
+    paths: {
+        echarts: 'https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min'
+    }
+});
 async function runQuery() {
     let baseQuery = editor.getValue();
     let finalQuery = baseQuery;
@@ -68,6 +74,7 @@ if (startTime && endTime) {
 
     populateFilters(originalData);
     renderTable(originalData);
+    loadErrorChart();
 }
 
 function populateFilters(data) {
@@ -174,4 +181,106 @@ function sortBy(column) {
 function clearTimeRange() {
     document.getElementById("startTime").value = "";
     document.getElementById("endTime").value = "";
+}
+// Error chart
+let chartInstance = null;
+
+async function loadErrorChart() {
+    let baseQuery = `
+        SELECT 
+            DATE_TRUNC('hour', timestamp) as t,
+            level,
+            COUNT(*) as count
+        FROM logs
+        GROUP BY t, level
+        ORDER BY t
+    `;
+
+    // Apply time filters (reuse logic)
+    const startTime = document.getElementById("startTime").value;
+    const endTime = document.getElementById("endTime").value;
+
+    if (startTime && endTime) {
+        baseQuery = `
+            SELECT * FROM (
+                ${baseQuery}
+            ) sub
+            WHERE t BETWEEN '${startTime.replace("T"," ")}'
+            AND '${endTime.replace("T"," ")}'
+        `;
+    }
+
+    const response = await fetch('/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: baseQuery })
+    });
+
+    const data = await response.json();
+    console.log("CHART DATA:", data);
+
+    if (data.error) {
+        console.error(data.error);
+        return;
+    }
+
+const timeMap = {};
+const levels = new Set();
+
+// Build structure
+data.rows.forEach(row => {
+    const t = row.t;
+    const level = row.level;
+    const count = Number(row.count);
+
+    levels.add(level);
+
+    if (!timeMap[t]) {
+        timeMap[t] = {};
+    }
+
+    timeMap[t][level] = count;
+});
+
+// Sorted time labels
+const labels = Object.keys(timeMap).sort();
+
+// Build series
+const series = Array.from(levels).map(level => {
+    return {
+        name: level,
+        type: 'line',
+        data: labels.map(t => timeMap[t][level] || 0)
+    };
+});
+
+    renderChart(labels, series);
+}
+//Render Chart function
+function renderChart(labels, series) {
+    require(['echarts'], function (echarts) {
+        const chartDom = document.getElementById('errorChart');
+
+        if (!echartsInstance) {
+            echartsInstance = echarts.init(chartDom);
+        }
+
+        const option = {
+            title: { text: 'Log Levels Over Time' },
+            tooltip: { trigger: 'axis' },
+            legend: {
+                data: series.map(s => s.name)
+            },
+            xAxis: {
+                type: 'category',
+                data: labels
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: series
+        };
+
+        echartsInstance.setOption(option);
+    });
 }

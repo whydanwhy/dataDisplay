@@ -10,6 +10,8 @@
     document.getElementById("endTime").value = now.toISOString().slice(0,16);
     document.getElementById("startTime").value = earlier.toISOString().slice(0,16);
 };</script>
+
+
 </head>
 <body>
 
@@ -18,7 +20,7 @@
 <div id="editor" style="height: 200px; border: 1px solid #ccc;"></div>
 <div style="margin-bottom:10px;">
     <label>Time Range:</label>
-    <select id="timeRange" onchange="applyTimeFilter()">
+    <select id="timeRange" onchange="runQuery()">
         <option value="none">All</option>
         <option value="15m">Last 15 min</option>
         <option value="1h">Last 1 hour</option>
@@ -53,7 +55,22 @@
 </div>
 <table border="1" id="results"></table>
 
-<script src="/static/app.js"></script>
 
+
+<h3> Error Trend (Per hour)</h3>
+<div id="errorChart" style="height:300px;"></div>
+
+    <script src="/static/app.js"></script>
+    
+    <script>
+    console.log("INLINE TEST - Chart:", typeof Chart);
+    </script>
+
+    <script src="/static/chart.js"></script>
+
+<script>
+    console.log("Chart test:", typeof Chart);
+</script>
+<script src="/static/app.js"></script>
 </body>
 </html>
