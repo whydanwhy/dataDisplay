@@ -282,5 +282,33 @@ function renderChart(labels, series) {
         };
 
         echartsInstance.setOption(option);
+            echartsInstance.on('click', function (params) {
+            const clickedTime = params.name;
+
+        console.log("Clicked time:", clickedTime);
+
+        applyTimeFromChart(clickedTime);
+});
     });
+}
+
+function applyTimeFromChart(timeLabel) {
+    // Convert label → Date
+    const selectedTime = new Date(timeLabel);
+
+    // Create 1-hour window
+    const start = new Date(selectedTime);
+    const end = new Date(selectedTime);
+
+    end.setHours(end.getHours() + 1);
+
+    // Format for datetime-local input
+    const format = (d) => d.toISOString().slice(0, 16);
+
+    document.getElementById("startTime").value = format(start);
+    document.getElementById("endTime").value = format(end);
+
+    console.log("Applied time range:", start, end);
+
+    runQuery();
 }
