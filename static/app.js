@@ -270,6 +270,68 @@ const series = Array.from(levels).map(level => {
 
     renderChart(labels, series);
 }
+// Save query function
+function saveQuery() {
+    const query = editor.getValue();
+
+    const name = prompt("Enter a name for this query:");
+    if (!name) return;
+
+    const saved = JSON.parse(localStorage.getItem("queries") || "{}");
+
+    saved[name] = query;
+
+    localStorage.setItem("queries", JSON.stringify(saved));
+
+    refreshSavedQueries();
+
+    console.log("Saved query:", name);
+}
+// Load Query function
+function loadSavedQuery() {
+    const select = document.getElementById("savedQueries");
+    const name = select.value;
+
+    if (!name) return;
+
+    const saved = JSON.parse(localStorage.getItem("queries") || "{}");
+
+    const query = saved[name];
+
+    if (query) {
+        editor.setValue(query);
+        console.log("Loaded query:", name);
+    }
+}
+// delete query function
+function deleteSavedQuery() {
+    const select = document.getElementById("savedQueries");
+    const name = select.value;
+
+    if (!name) return;
+
+    const saved = JSON.parse(localStorage.getItem("queries") || "{}");
+
+    delete saved[name];
+
+    localStorage.setItem("queries", JSON.stringify(saved));
+
+    refreshSavedQueries();
+
+    console.log("Deleted query:", name);
+}
+// populate the dropdown
+function refreshSavedQueries() {
+    const select = document.getElementById("savedQueries");
+
+    const saved = JSON.parse(localStorage.getItem("queries") || "{}");
+
+    select.innerHTML = '<option value="">-- Saved Queries --</option>';
+
+    Object.keys(saved).forEach(name => {
+        select.innerHTML += `<option value="${name}">${name}</option>`;
+    });
+}
 //Render Chart function
 function renderChart(labels, series) {
     require(['echarts'], function (echarts) {

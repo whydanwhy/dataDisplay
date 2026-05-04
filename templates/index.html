@@ -9,6 +9,7 @@
 
     document.getElementById("endTime").value = now.toISOString().slice(0,16);
     document.getElementById("startTime").value = earlier.toISOString().slice(0,16);
+    refreshSavedQueries();
 };</script>
 
 
@@ -16,8 +17,18 @@
 <body>
 
 <h2>Log Query</h2>
+<!-- Save query-->
+<div style="margin-bottom:10px;">
+    <button onclick="saveQuery()">Save Query</button>
 
+    <select id="savedQueries" onchange="loadSavedQuery()">
+        <option value="">-- Saved Queries --</option>
+    </select>
+
+    <button onclick="deleteSavedQuery()">Delete</button>
+</div>
 <div id="editor" style="height: 200px; border: 1px solid #ccc;"></div>
+<!-- Editor-->
 <div style="margin-bottom:10px;">
     <label>Time Range:</label>
     <select id="timeRange" onchange="runQuery()">
