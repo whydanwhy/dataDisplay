@@ -182,6 +182,20 @@ function clearTimeRange() {
     document.getElementById("startTime").value = "";
     document.getElementById("endTime").value = "";
 }
+
+function applyBrushTimeRange(start, end) {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    const format = (d) => d.toISOString().slice(0, 16);
+
+    document.getElementById("startTime").value = format(startDate);
+    document.getElementById("endTime").value = format(endDate);
+
+    console.log("Applied brush range:", startDate, endDate);
+
+    runQuery();
+}
 // Error chart
 let chartInstance = null;
 
@@ -264,6 +278,24 @@ function renderChart(labels, series) {
         if (!echartsInstance) {
             echartsInstance = echarts.init(chartDom);
         }
+        echartsInstance.on('brushEnd', function (params) {
+        if (!params.batch.length) return;
+
+    const areas = params.batch[0].areas;
+    if (!areas.length) return;
+
+    const coordRange = areas[0].coordRange;
+
+    const startIndex = Math.floor(coordRange[0]);
+    const endIndex = Math.ceil(coordRange[1]);
+
+    const startTime = labels[startIndex];
+    const endTime = labels[endIndex];
+
+    console.log("Brush selected:", startTime, "to", endTime);
+
+    applyBrushTimeRange(startTime, endTime);
+        });
 
         const option = {
             title: { text: 'Log Levels Over Time' },
@@ -277,6 +309,20 @@ function renderChart(labels, series) {
             },
             yAxis: {
                 type: 'value'
+            },
+            dataZoom: [
+            {
+            type: 'inside', // mouse wheel zoom
+                xAxisIndex: 0
+            },
+            {
+                type: 'slider', // visible slider
+            xAxisIndex: 0
+            }
+            ],
+            brush: {
+            toolbox: ['rect', 'clear'],
+            xAxisIndex: 0
             },
             series: series
         };
