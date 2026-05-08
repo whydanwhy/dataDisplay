@@ -28,29 +28,21 @@ const timeRange = document.getElementById("timeRange")?.value;
 const startTime = document.getElementById("startTime").value;
 const endTime = document.getElementById("endTime").value;
 
-// PRIORITY: Custom range overrides dropdown
-if (startTime && endTime) {
-    finalQuery = `
-        SELECT * FROM (
-            ${baseQuery.replace(/;$/, '')}
-        ) AS sub
-        WHERE timestamp BETWEEN '${startTime.replace("T", " ")}'
-        AND '${endTime.replace("T", " ")}'
-    `;
-} else if (timeRange && timeRange !== "none") {
-    const intervalMap = {
-        "15m": "INTERVAL '15 minutes'",
-        "1h": "INTERVAL '1 hour'",
-        "24h": "INTERVAL '24 hours'"
-    };
+// normalize timestamps to include seconds
+function normalize(ts) {
+    if (!ts) return ts;
+    return ts.length === 16 ? ts + ":00" : ts;
+}
 
-    const interval = intervalMap[timeRange];
+if (startTime && endTime && !baseQuery.toLowerCase().includes("group by")) {
+    const start = normalize(startTime);
+    const end = normalize(endTime);
 
     finalQuery = `
         SELECT * FROM (
             ${baseQuery.replace(/;$/, '')}
         ) AS sub
-        WHERE timestamp >= NOW() - ${interval}
+        WHERE timestamp BETWEEN '${start}' AND '${end}'
     `;
 }
 
@@ -200,29 +192,33 @@ function applyBrushTimeRange(start, end) {
 let chartInstance = null;
 
 async function loadErrorChart() {
-    let baseQuery = `
-        SELECT 
-            DATE_TRUNC('hour', timestamp) as t,
-            level,
-            COUNT(*) as count
-        FROM logs
-        GROUP BY t, level
-        ORDER BY t
+let baseQuery = `
+    SELECT timestamp, memory_mb
+    FROM logs
+    LIMIT 100
+`;
+
+const startTime = document.getElementById("startTime").value;
+const endTime = document.getElementById("endTime").value;
+
+function applyTimeFilter(query, startTime, endTime) {
+    if (!startTime || !endTime) return query;
+
+    const normalize = (ts) => ts.length === 16 ? ts + ":00" : ts;
+
+    const start = normalize(startTime);
+    const end = normalize(endTime);
+
+    return `
+        SELECT * FROM (
+            ${query}
+        ) sub
+        WHERE timestamp BETWEEN '${start}' AND '${end}'
     `;
+}
 
-    // Apply time filters (reuse logic)
-    const startTime = document.getElementById("startTime").value;
-    const endTime = document.getElementById("endTime").value;
-
-    if (startTime && endTime) {
-        baseQuery = `
-            SELECT * FROM (
-                ${baseQuery}
-            ) sub
-            WHERE t BETWEEN '${startTime.replace("T"," ")}'
-            AND '${endTime.replace("T"," ")}'
-        `;
-    }
+// usage
+baseQuery = applyTimeFilter(baseQuery, startTime, endTime);
 
     const response = await fetch('/query', {
         method: 'POST',
@@ -238,8 +234,11 @@ async function loadErrorChart() {
         return;
     }
 
-const timeMap = {};
-const levels = new Set();
+const timelabels = data.rows.map(r => r.t);
+
+const memorySeries = data.rows.map(r => r.memory);
+const detectionSeries = data.rows.map(r => r.detection_ratio);
+const customersSeries = data.rows.map(r => r.customers_left);
 
 // Build structure
 data.rows.forEach(row => {
@@ -260,13 +259,23 @@ data.rows.forEach(row => {
 const labels = Object.keys(timeMap).sort();
 
 // Build series
-const series = Array.from(levels).map(level => {
-    return {
-        name: level,
+const series = [
+    {
+        name: 'Memory (MB)',
         type: 'line',
-        data: labels.map(t => timeMap[t][level] || 0)
-    };
-});
+        data: memorySeries
+    },
+    {
+        name: 'Detection Ratio',
+        type: 'line',
+        data: detectionSeries
+    },
+    {
+        name: 'Customers Left',
+        type: 'line',
+        data: customersSeries
+    }
+];
 
     renderChart(labels, series);
 }
@@ -367,11 +376,20 @@ function renderChart(labels, series) {
             },
             xAxis: {
                 type: 'category',
-                data: labels
+                data: timelabels
             },
-            yAxis: {
-                type: 'value'
-            },
+            yAxis: [
+    {
+        type: 'value',
+        name: 'Memory',
+        position: 'left'
+    },
+    {
+            type: 'value',
+            name: 'Ratio / Customers',
+            position: 'right'
+            }
+            ],
             dataZoom: [
             {
             type: 'inside', // mouse wheel zoom

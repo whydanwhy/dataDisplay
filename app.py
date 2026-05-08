@@ -40,16 +40,19 @@ async def run_query(payload: QueryRequest):
         con.execute(f"""
             CREATE OR REPLACE VIEW logs AS
             SELECT 
-                CAST(timestamp AS TIMESTAMP) as timestamp,
-                level,
-                service,
-                user_id,
-                ip,
-                incident,
-                incident_service,
-                incident_type,
-                message,
-                session_id
+                timestamp as timestamp,
+                tick,
+                traffic_level,
+                expected_waiting,
+                frames_in,
+                frames_out,
+                detections_waiting,
+                alerts_triggered,
+                customers_seated,
+                customers_left,
+                memory_mb,
+                latency_ms,
+                cpu_pct
             FROM read_json_auto('{DB_PATH}')
         """)
 
